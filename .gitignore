@@ -1,0 +1,13 @@
+.Rproj.user
+.Rhistory
+.RData
+.Ruserdata
+.Rdata
+.httr-oauth
+.DS_Store
+.quarto
+desktop.ini
+data_IMUSA_raw.xls
+script_IMU_glmm_gam.R
+spatial_layers.R
+data_cleaning.R
