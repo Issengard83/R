@@ -1,8 +1,8 @@
-### Data analysis for the manuscript: Seroprevalence of Leptospira antibodies 
-### in dogs and cats attending to municipal spay/neuter campaigns,
-### Santa Fe, Argentina.
+### Data analysis for the manuscript:
+### Seroprevalence of Leptospira antibodies in dogs and cats attending to municipal 
+### spay/neuter campaigns, Santa Fe, Argentina.
 ### Author: Tamara Ricardo
-### Last update: 2023-09-13
+### Last update: 2023-09-14
 
 # LOAD PACKAGES -----------------------------------------------------------
 pacman::p_load(
@@ -16,7 +16,7 @@ pacman::p_load(
   # Map tools
   sf, 
   OpenStreetMap,
-  # ggmap,
+  spdep,
   # Colorblind-friendly palettes
   scico,
   # Data management
@@ -41,16 +41,11 @@ imu_df = readxl::read_excel("data_IMUSA_clean.xlsx") %>%
 
 # Load socioeconomic indicators layer -------------------------------------
 var_ct = st_read("SHP/VAR_CT_SF.shp") %>% 
-  ### Join MAT results
-  left_join(imu_df %>% group_by(redcode) %>% 
-              summarise(POS = if_else(MAT_res=="POS", 1, 0) %>% sum(., na.rm = T),
-                        N = n())) %>% 
-  ungroup() %>% 
-  # Raw indicators as percentages
+  ### Raw indicators as percentages
   mutate_at(vars(starts_with("h_")|matches("pc_hog")), 
             list(pct = ~ round(.*100/n_hogares,2)))
 
-### Number of samples per district
+### Number of samples per administrative district
 tbl_summary(imu_df, include = adm_dis, 
             sort = list(everything() ~ "frequency"))
 
@@ -139,8 +134,7 @@ dog_df %>% tbl_uvregression(y = MAT_res,
 # Multivariate model ------------------------------------------------------
 fit = glmmTMB(MAT_res ~ street_access + con_garbage_dumps + rodent_sight_fr +
                 (1|adm_dis), 
-              family = binomial,
-              data = dog_df)
+              family = binomial, data = dog_df)
 
 ### Variable selection
 drop1(fit)
@@ -158,6 +152,15 @@ tbl_regression(fit2, exponentiate = T)
 
 r2(fit2)
 
+### Clean working environment
+rm(list = setdiff(ls(), c("imu_df","var_ct")))
+
 # Spatial GAMs ------------------------------------------------------------
+### Filter census tracts with no samples
+gam_df = var_ct %>% filter(!is.na(POS))
 
+### Spatial autocorrelation
+df_nb = poly2nb(var_ct, queen = T) %>% 
+  nb2listw()
 
+moran.test(var_ct$POS, listw = df_nb, na.action = na.omit)
